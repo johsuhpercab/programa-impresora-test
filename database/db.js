@@ -4,13 +4,24 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 
-const DB_PATH = path.join(__dirname, 'gestion.db');
+const DB_ORIGIN_PATH = path.join(__dirname, 'gestion.db');
+let DB_PATH = DB_ORIGIN_PATH;
+
+// Detectar si estamos en Vercel
+if (process.env.VERCEL) {
+  DB_PATH = path.join('/tmp', 'gestion.db');
+  // Si la DB original existe pero en /tmp no, la copiamos para tener los datos de nuestro repositorio
+  if (fs.existsSync(DB_ORIGIN_PATH) && !fs.existsSync(DB_PATH)) {
+    fs.copyFileSync(DB_ORIGIN_PATH, DB_PATH);
+  }
+}
 
 let db;
 
 function getDb() {
   if (!db) {
     db = new Database(DB_PATH);
+    // En Vercel, WAL mode puede causar problemas, pero en /tmp es completamente escribible.
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
     inicializarEsquema();
