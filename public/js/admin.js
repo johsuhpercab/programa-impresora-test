@@ -846,7 +846,10 @@ function abrirModal(id) { document.getElementById(id).classList.add('open'); }
 function cerrarModal(id) { document.getElementById(id).classList.remove('open'); }
 
 function showLoader(show) {
-  document.getElementById('loaderOverlay').classList.toggle('show', show);
+  const overlay = document.getElementById('loaderOverlay');
+  const topInd = document.getElementById('topLoadingIndicator');
+  if (overlay) overlay.classList.toggle('show', show);
+  if (topInd) topInd.style.display = show ? 'flex' : 'none';
 }
 
 function formatFechaHora(str) {

@@ -325,9 +325,37 @@ tr:hover td { background: var(--bg-card-hover); }
 .loader-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; display: none; place-items: center; }
 .loader-overlay.show { display: grid; }
 
+/* ── Top Loading Indicator ───────────────────────────────────────────────── */
+.top-loading-hw {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-accent);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  box-shadow: var(--shadow-glow);
+  animation: fadeIn 0.3s ease;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.spinner-sm {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
 /* ── Animaciones ─────────────────────────────────────────────────────────── */
 @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 .fade-in { animation: fadeIn 0.3s ease; }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
 
 /* ── Empty state ─────────────────────────────────────────────────────────── */
 .empty-state { text-align: center; padding: 48px 24px; color: var(--text-muted); }
