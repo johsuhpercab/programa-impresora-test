@@ -44,10 +44,9 @@ function showError(msg) {
 
 // ── PIN ───────────────────────────────────────────────────────────────────────
 function pinKey(digit) {
-  if (pinBuffer.length >= 4) return;
+  if (pinBuffer.length >= 6) return;
   pinBuffer += digit;
   actualizarDotsPIN();
-  if (pinBuffer.length === 4) verificarPIN();
 }
 
 function pinDelete() {
@@ -57,7 +56,7 @@ function pinDelete() {
 }
 
 function actualizarDotsPIN() {
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 6; i++) {
     const dot = document.getElementById('d' + i);
     if (!dot) continue;
     dot.classList.toggle('filled', i < pinBuffer.length);
