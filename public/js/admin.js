@@ -1,6 +1,10 @@
 'use strict';
 
-const API = 'https://script.google.com/macros/s/AKfycbxy9AmyuRBNJi9HGWeZMkG9hQtszhOrl1n9tPgbHMEQBdHpgM1uk_OchEcsDOaMhSMU/exec'; // <--- URL DE LA WEB APP ACTUALIZADA
+const SUPABASE_URL = 'https://fjovfqzrvsxmpnpblvuk.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqb3ZmcXpydnN4bXBucGJsdnVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2OTc0MTgsImV4cCI6MjA5MjI3MzQxOH0.ozh9SIPLrbcGY_YVQor-5EAgn34sQLUySB8CrFWlZ6Q';
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 let datosSalas = [];
 let datosMaquinas = [];
 let datosOperarios = [];
@@ -732,79 +736,142 @@ async function eliminarUsuarioAdmin(id) {
   }
 }
 
-// ── Utilidades ────────────────────────────────────────────────────────────────
+// ── Supabase API Proxy ────────────────────────────────────────────────────────
 async function apiFetch(url, options = {}) {
-  const pin = localStorage.getItem('admin_pin');
-  
   try {
-    let action = '';
-    let payload = options.body;
-    let method = options.method || 'GET';
-    let id = null;
+    const method = options.method || 'GET';
+    const payload = options.body || {};
 
-    // Determinar acción
-    if (url.includes('/api/salas')) action = 'getSalas';
-    else if (url.includes('/api/maquinas') && method === 'GET') action = 'getMaquinas';
-    else if (url.includes('/api/maquina/') && method === 'GET' && url.includes('/qr')) {
-       const urlObj = new URL('operario.html', window.location.origin + window.location.pathname);
-       const u = urlObj.href + "?id=" + url.split('/')[3];
-       return { ok: true, data: { qr: "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" + encodeURIComponent(u), url: u } };
-    }
-    else if (url.includes('/api/maquinas') && method === 'POST') action = 'manageMaquinas';
-    else if (url.includes('/api/maquina/') && (method === 'PUT' || method === 'DELETE')) {
-       action = 'manageMaquinas';
-       id = url.split('/')[3];
-    }
-    else if (url.includes('/api/operarios') && method === 'GET') action = 'getOperarios';
-    else if (url.includes('/api/operarios') && method === 'POST') action = 'manageOperarios';
-    else if (url.includes('/api/usuarios') && method === 'GET') action = 'getUsuarios';
-    else if (url.includes('/api/usuarios') && method === 'POST') action = 'manageUsuarios';
-    else if (url.includes('/api/usuario/') && method === 'DELETE') {
-       action = 'manageUsuarios';
-       id = url.split('/')[3];
-    }
-    else if (url.includes('/api/dashboard')) action = 'getDashboard';
-    else if (url.includes('/api/historial')) action = 'getHistorial';
-    else if (url.includes('/api/login-admin')) action = 'loginAdmin';
-    else if (url.includes('/api/sesion/') && url.includes('/detalle')) {
-       action = 'getHistorial'; // Placeholder si es necesario
+    // 1. LOGIN ADMIN
+    if (url.includes('/api/login-admin')) {
+      const { data, error } = await supabase.from('config').select('valor').eq('clave', 'admin_pin').single();
+      if (error) throw error;
+      const savedPin = data.valor.trim();
+      const enteredPin = localStorage.getItem('admin_pin');
+      if (savedPin === enteredPin) return { ok: true };
+      return { ok: false, error: 'PIN incorrecto' };
     }
 
-    if (API.includes('INSERTA_TU_WEB_APP_URL_AQUI')) {
-      console.warn('Falta añadir la URL del Sheet en admin.js');
-      return { ok: true, data: [] };
+    // 2. SALAS
+    if (url.includes('/api/salas')) {
+      const { data, error } = await supabase.from('salas').select('*').order('nombre');
+      if (error) throw error;
+      return { ok: true, data };
     }
 
-    // Siempre enviamos auth_pin si existe
-    let fetchUrl = API + (API.includes('?') ? '&' : '?') + 'action=' + action;
-    if (id) fetchUrl += '&id=' + id;
-    if (pin) fetchUrl += '&auth_pin=' + pin;
-
-    let fetchOptions = {
-      method: 'POST',
-      body: JSON.stringify({
-        action: action,
-        id: id,
-        auth_pin: pin,
-        payload: payload,
-        method: method
-      }),
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-    };
-
-    const response = await fetch(fetchUrl, fetchOptions);
-    const result = await response.json();
-    
-    if (result.code === 403) {
-      console.error('Acceso no autorizado: PIN incorrecto o sesión caducada');
-      cerrarSesionAdmin();
-      return { ok: false, error: 'No autorizado' };
+    // 3. MÁQUINAS (CON ESTADO CALCULADO)
+    if (url.includes('/api/maquinas') && method === 'GET') {
+      const { data, error } = await supabase.from('equipos').select('*, salas(nombre)').order('nombre');
+      if (error) throw error;
+      
+      const mapped = data.map(m => {
+        const hoy = new Date();
+        const frec = m.frecuencia_dias || 7;
+        let estadoMant = 'pendiente';
+        if (m.ultimo_mantenimiento) {
+          const ult = new Date(m.ultimo_mantenimiento);
+          const dif = (hoy - ult) / (1000 * 60 * 60 * 24);
+          if (dif > frec) estadoMant = 'vencido';
+          else if (dif > frec * 0.8) estadoMant = 'proximo';
+          else estadoMant = 'ok';
+        }
+        return {
+          ...m,
+          sala_nombre: m.salas ? m.salas.nombre : 'Sin sala',
+          estado_mantenimiento: estadoMant
+        };
+      });
+      return { ok: true, data: mapped };
     }
-    
-    return result;
+
+    if (url.includes('/api/maquinas') && method === 'POST') {
+      const { data, error } = await supabase.from('equipos').insert([payload]).select();
+      if (error) throw error;
+      return { ok: true, data: data[0] };
+    }
+
+    if (url.includes('/api/maquina/') && method === 'PUT') {
+      const id = url.split('/')[3];
+      const { error } = await supabase.from('equipos').update(payload).eq('id', id);
+      if (error) throw error;
+      return { ok: true };
+    }
+
+    if (url.includes('/api/maquina/') && method === 'DELETE') {
+      const id = url.split('/')[3];
+      const { error } = await supabase.from('equipos').delete().eq('id', id);
+      if (error) throw error;
+      return { ok: true };
+    }
+
+    // 4. OPERARIOS
+    if (url.includes('/api/operarios') && method === 'GET') {
+      const { data, error } = await supabase.from('operarios').select('*').eq('activo', true).order('nombre');
+      if (error) throw error;
+      return { ok: true, data };
+    }
+
+    if (url.includes('/api/operarios') && method === 'POST') {
+      const { data, error } = await supabase.from('operarios').insert([payload]).select();
+      if (error) throw error;
+      return { ok: true, data: data[0] };
+    }
+
+    // 5. DASHBOARD (KPIs)
+    if (url.includes('/api/dashboard')) {
+      const hoy = new Date().toISOString().split('T')[0];
+      
+      const { data: registros } = await supabase.from('registros').select('*');
+      const { data: equipos } = await supabase.from('equipos').select('*');
+
+      const stats = {
+        hoy: (registros || []).filter(r => r.timestamp.startsWith(hoy)).length,
+        semana: (registros || []).filter(r => new Date(r.timestamp) > new Date(Date.now() - 7*24*60*60*1000)).length,
+        pendientes: 0,
+        proximos: 0,
+        porDia: [],
+        porMaquina: []
+      };
+
+      (equipos || []).forEach(m => {
+        const frec = m.frecuencia_dias || 7;
+        if (!m.ultimo_mantenimiento) stats.pendientes++;
+        else {
+          const dif = (new Date() - new Date(m.ultimo_mantenimiento)) / (1000*60*60*24);
+          if (dif > frec) stats.pendientes++;
+          else if (dif > frec * 0.8) stats.proximos++;
+        }
+      });
+
+      return { ok: true, data: stats };
+    }
+
+    // 6. HISTORIAL
+    if (url.includes('/api/historial')) {
+      const { data, error } = await supabase.from('registros').select('*').order('timestamp', { ascending: false }).limit(100);
+      if (error) throw error;
+      const mapped = data.map(r => ({
+        ...r,
+        maquina: r.maquina_nombre,
+        sala: r.sala_nombre,
+        operario: r.operario_nombre,
+        completado_en: r.timestamp
+      }));
+      return { ok: true, data: mapped };
+    }
+
+    // 7. QR (GENERACIÓN LOCAL)
+    if (url.includes('/qr')) {
+      const id = url.split('/')[3];
+      const urlObj = new URL('operario.html', window.location.origin + window.location.pathname);
+      const u = urlObj.href + "?id=" + id;
+      return { ok: true, data: { qr: "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" + encodeURIComponent(u), url: u } };
+    }
+
+    return { ok: false, error: 'Endpoint no implementado' };
   } catch (err) {
-    console.error('Error en apiFetch:', err);
-    return { ok: false, error: 'Error de conexión con el servidor' };
+    console.error('API Error:', err);
+    return { ok: false, error: err.message };
   }
 }
 

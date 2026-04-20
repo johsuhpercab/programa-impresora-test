@@ -1,11 +1,13 @@
 /* ═══════════════════════════════════════════════════════════
    Reporte de Impresoras — Interfaz Operario
-   Adaptado para usar la API local del servidor Node.js
+   Migrado a Supabase para alto rendimiento
    ═══════════════════════════════════════════════════════════ */
 
-// ─── API LOCAL (servidor Node.js) ───────────────────────────────────────────
-// Detectar automáticamente la URL base del servidor
-const API_BASE = window.location.origin;
+// ─── CONFIGURACIÓN SUPABASE ────────────────────────────────────────────────
+const SUPABASE_URL = 'https://fjovfqzrvsxmpnpblvuk.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqb3ZmcXpydnN4bXBucGJsdnVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2OTc0MTgsImV4cCI6MjA5MjI3MzQxOH0.ozh9SIPLrbcGY_YVQor-5EAgn34sQLUySB8CrFWlZ6Q';
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // ─────────────────────────────────────────────────────────────────────────────
 
 /* ── DOM refs ───────────────────────────────────────────── */
@@ -106,13 +108,17 @@ async function loadMachines(preselect = null) {
   let machines = [];
 
   try {
-    // Carga desde la API local del servidor Node.js
-    const res  = await fetch(`${API_BASE}/api/maquinas/lista`, { cache: 'no-store' });
-    const json = await res.json();
-    if (json.status === 'ok' && json.machines.length) {
-      machines = json.machines;
-    }
-  } catch (_) { /* servidor no disponible */ }
+    // Carga desde Supabase
+    const { data: dbMachines, error } = await supabase.from('equipos').select('*, salas(nombre)');
+    if (error) throw error;
+    
+    machines = dbMachines.map(m => ({
+      id: m.nombre,
+      id_num: m.id,
+      space: m.salas ? m.salas.nombre : 'General',
+      status: m.estado === 'activa' ? 'Activa' : 'Inactiva'
+    }));
+  } catch (err) { console.error('Error cargando máquinas:', err); }
 
   if (!machines.length) {
     machineSelect.innerHTML = '<option value="">No hay impresoras — contacta al administrador</option>';
@@ -409,18 +415,10 @@ function buildSummary() {
   }
 }
 
-/* ── Submit al servidor local ────────────────────────────── */
+/* ── Submit a Supabase ──────────────────────────────────── */
 btnSubmit.addEventListener('click', submitToServer);
 
 async function submitToServer() {
-  const payload = {
-    assetId:   state.assetId,
-    type:      state.type,
-    notas:     state.notes,
-    photos:    state.photos,
-    timestamp: state.timestamp,
-  };
-
   btnSubmit.disabled = true;
   submitText.classList.add('hidden');
   submitSpinner.classList.remove('hidden');
@@ -432,21 +430,32 @@ async function submitToServer() {
   successOverlay.classList.remove('hidden');
 
   try {
-    const res = await fetch(`${API_BASE}/api/incidencias`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(payload),
-    });
-    const json = await res.json();
+    // 1. Obtener datos de la máquina para el histórico denormalizado
+    const { data: machineData } = await supabase.from('equipos').select('*, salas(nombre)').eq('nombre', state.assetId).single();
 
-    if (json.ok) {
-      successIcon.style.display  = '';
-      successTitle.style.display = '';
-      btnNewRecord.style.display = '';
-      successDetail.textContent  = `Reporte guardado en el sistema (ID: ${json.data?.id || '—'})`;
-    } else {
-      throw new Error(json.error || 'Error desconocido');
+    // 2. Insertar registro
+    const { data: insertData, error: insertError } = await supabase.from('registros').insert([{
+      maquina_id: machineData ? machineData.id : null,
+      maquina_nombre: state.assetId,
+      sala_nombre: machineData && machineData.salas ? machineData.salas.nombre : 'General',
+      tipo: state.type,
+      notes: state.notes,
+      fotos: state.photos,
+      timestamp: state.timestamp
+    }]).select();
+
+    if (insertError) throw insertError;
+
+    // 3. Si es mantenimiento, actualizar la fecha del último en la máquina
+    if (state.type === 'Mantenimiento' && machineData) {
+      await supabase.from('equipos').update({ ultimo_mantenimiento: state.timestamp }).eq('id', machineData.id);
     }
+
+    successIcon.style.display  = '';
+    successTitle.style.display = '';
+    btnNewRecord.style.display = '';
+    successDetail.textContent  = `Reporte guardado en Supabase (ID: ${insertData[0].id})`;
+
   } catch (error) {
     successIcon.style.display  = '';
     successTitle.style.display = '';
@@ -496,21 +505,20 @@ function resetApp() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-/* ── Historial desde la API local ───────────────────────── */
+/* ── Historial desde Supabase ───────────────────────────── */
 let globalHistoryCache = [];
 
 async function fetchGlobalHistory() {
   historyList.innerHTML = '<div class="history-empty"><span class="spinner" style="display:inline-block; border-color:var(--accent); border-top-color:transparent;"></span> Cargando historial...</div>';
 
   try {
-    const res  = await fetch(`${API_BASE}/api/incidencias`, { cache: 'no-store' });
-    const json = await res.json();
-    if (json.status === 'ok') {
-      globalHistoryCache = json.history || [];
-      renderGlobalHistory();
-    } else {
-      throw new Error(json.error);
-    }
+    const { data, error } = await supabase.from('registros').select('*').order('timestamp', { ascending: false }).limit(50);
+    if (error) throw error;
+    globalHistoryCache = data.map(r => ({
+      ...r,
+      assetId: r.maquina_nombre
+    }));
+    renderGlobalHistory();
   } catch (err) {
     globalHistoryCache = [];
     historyList.innerHTML = `<div class="history-empty" style="color:var(--danger)">Error al cargar historial: ${err.message}</div>`;
@@ -543,7 +551,7 @@ function renderGlobalHistory() {
       <div class="history-item-type ${item.type && item.type.startsWith('Incidencia') ? 'type-incidencia' : 'type-mantenimiento'}">${item.type || '—'}</div>
       <div class="history-item-time" style="margin-bottom:4px;color:var(--text-3)">${item.timestamp}</div>
       ${item.notes ? `<div style="font-size:0.8rem; color:var(--text-2); margin-top:4px;">💬 ${item.notes}</div>` : ''}
-      ${item.hasPhotos ? `<div style="font-size:0.75rem; color:var(--accent); margin-top:4px;">📷 Con fotos adjuntas</div>` : ''}
+      ${item.fotos && item.fotos.length > 0 ? `<div style="font-size:0.75rem; color:var(--accent); margin-top:4px;">📷 Con fotos adjuntas</div>` : ''}
     `;
     historyList.appendChild(div);
   });
