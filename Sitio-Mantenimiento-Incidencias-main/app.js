@@ -4,8 +4,32 @@
    ═══════════════════════════════════════════════════════════ */
 
 // ─── API LOCAL (servidor Node.js) ───────────────────────────────────────────
-// Detectar automáticamente la URL base del servidor
-const API_BASE = window.location.origin;
+// Detectar URL o inyectarla
+const API_URL = 'INSERTA_TU_WEB_APP_URL_AQUI'; 
+
+async function apiFetch(url, options = {}) {
+  let action = '';
+  let method = options.method || 'GET';
+  let payload = options.body;
+
+  if (url.includes('/api/maquinas/lista')) action = 'getMaquinas';
+  else if (url.includes('/api/incidencias') && method === 'GET') action = 'getHistorial';
+  else if (url.includes('/api/incidencias') && method === 'POST') action = 'enviarIncidencia';
+
+  if (method === 'GET') {
+    const res = await fetch(`${API_URL}?action=${action}`);
+    return res;
+  } else {
+    // POST request
+    const bodyObj = JSON.parse(payload);
+    bodyObj.action = action;
+    const res = await fetch(API_URL, {
+      method: "POST",
+      body: JSON.stringify(bodyObj)
+    });
+    return res;
+  }
+}
 // ─────────────────────────────────────────────────────────────────────────────
 
 /* ── DOM refs ───────────────────────────────────────────── */
@@ -107,7 +131,7 @@ async function loadMachines(preselect = null) {
 
   try {
     // Carga desde la API local del servidor Node.js
-    const res  = await fetch(`${API_BASE}/api/maquinas/lista`, { cache: 'no-store' });
+    const res  = await apiFetch(`${API_URL}/api/maquinas/lista`, { cache: 'no-store' });
     const json = await res.json();
     if (json.status === 'ok' && json.machines.length) {
       machines = json.machines;
@@ -432,7 +456,7 @@ async function submitToServer() {
   successOverlay.classList.remove('hidden');
 
   try {
-    const res = await fetch(`${API_BASE}/api/incidencias`, {
+    const res = await apiFetch(`${API_URL}/api/incidencias`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify(payload),
@@ -503,7 +527,7 @@ async function fetchGlobalHistory() {
   historyList.innerHTML = '<div class="history-empty"><span class="spinner" style="display:inline-block; border-color:var(--accent); border-top-color:transparent;"></span> Cargando historial...</div>';
 
   try {
-    const res  = await fetch(`${API_BASE}/api/incidencias`, { cache: 'no-store' });
+    const res  = await apiFetch(`${API_URL}/api/incidencias`, { cache: 'no-store' });
     const json = await res.json();
     if (json.status === 'ok') {
       globalHistoryCache = json.history || [];
