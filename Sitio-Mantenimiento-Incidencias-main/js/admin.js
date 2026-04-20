@@ -81,6 +81,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     await cargarDashboard();
     const selectRol = document.getElementById('simuladorRol');
     if (selectRol) cambiarRolSimulado(selectRol.value);
+
+    // Auto-sincronización cada 2 minutos para mantener el panel "vivo"
+    setInterval(() => {
+      console.log('Sincronización automática con MantApp Cloud...');
+      recargarTodo();
+    }, 120000);
   } catch (err) {
     console.warn('Error en componentes secundarios:', err);
   }
@@ -95,6 +101,13 @@ function skeletonMaquinas() {
   </div>`;
   const inner = Array(6).fill(card).join('');
   return `<div class="grid-maquinas-inner" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;display:grid">${inner}</div>`;
+}
+
+function skeletonTabla(cols = 5) {
+  const row = `<tr>
+    ${Array(cols).fill(`<td><div style="height:12px;background:var(--border);border-radius:6px;width:80%;animation:pulse 1.5s ease-in-out infinite"></div></td>`).join('')}
+  </tr>`;
+  return Array(5).fill(row).join('');
 }
 
 async function cargarDatosBase() {
@@ -555,6 +568,11 @@ async function cargarHistorial() {
   if (desde) params.set('desde', desde);
   if (hasta) params.set('hasta', hasta);
 
+  const tbody = document.getElementById('tablaHistorial');
+  const empty = document.getElementById('historialEmpty');
+  if (tbody) tbody.innerHTML = skeletonTabla(8);
+  if (empty) empty.style.display = 'none';
+
   const res = await apiFetch('/api/historial?' + params.toString());
   const tbody = document.getElementById('tablaHistorial');
   const empty = document.getElementById('historialEmpty');
@@ -620,6 +638,13 @@ function exportarCSV() {
 // ── Operarios ─────────────────────────────────────────────────────────────────
 function renderOperarios() {
   const tbody = document.getElementById('tablaOperarios');
+  if (!tbody) return;
+
+  if (isCargando && !datosOperarios.length) {
+    tbody.innerHTML = skeletonTabla(5);
+    return;
+  }
+
   tbody.innerHTML = datosOperarios.map(o => `
     <tr>
       <td data-label="ID" class="text-muted">#${o.id}</td>
@@ -677,6 +702,13 @@ const ROL_BADGES = {
 function renderUsuarios() {
   const tbody = document.getElementById('tablaUsuarios');
   const empty = document.getElementById('usuariosEmpty');
+  if (!tbody) return;
+
+  if (isCargando && !datosUsuarios.length) {
+    tbody.innerHTML = skeletonTabla(7);
+    return;
+  }
+
   const lista = datosUsuarios.filter(u => u.activo);
   if (!lista.length) {
     tbody.innerHTML = '';
