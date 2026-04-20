@@ -348,7 +348,7 @@ tr:hover td { background: var(--bg-card-hover); }
   border-radius: 50%;
   margin: 0 auto 24px;
   box-shadow: 0 0 30px var(--accent-glow);
-  animation: spin 1s quadratic-bezier(0.4, 0, 0.2, 1) infinite;
+  animation: spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 .loader-text {
@@ -374,19 +374,25 @@ tr:hover td { background: var(--bg-card-hover); }
 .top-loading-hw {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   background: var(--bg-card);
   border: 1px solid var(--border-accent);
-  padding: 6px 14px;
-  border-radius: 20px;
-  font-size: 12px;
+  padding: 8px 18px;
+  border-radius: 24px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--accent);
-  box-shadow: var(--shadow-glow);
-  animation: fadeIn 0.3s ease;
+  box-shadow: 0 0 20px rgba(79, 142, 247, 0.2), var(--shadow);
+  animation: slideDownIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
+  z-index: 60;
+}
+
+@keyframes slideDownIn {
+  from { opacity: 0; transform: translate(-50%, -10px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
 }
 .spinner-sm {
   width: 14px;

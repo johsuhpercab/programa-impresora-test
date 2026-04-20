@@ -56,6 +56,7 @@ function cambiarRolSimulado(nuevoRol) {
 document.addEventListener('DOMContentLoaded', async () => {
   try {
     isCargando = true;
+    showLoader(true);
     // Show initial skeletons
     const grid = document.getElementById('gridMaquinas');
     if (grid) grid.innerHTML = skeletonMaquinas();
@@ -72,8 +73,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   } catch (err) {
     console.error('Error durante la carga inicial:', err);
   } finally {
+    showLoader(false);
     isCargando = false;
-    renderMaquinas(); // Render real data (or empty state) now that loading is done
+    renderMaquinas(); 
   }
 
   // Load secondary data
@@ -234,8 +236,12 @@ function toggleSidebar() {
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 async function cargarDashboard() {
+  showLoader(true);
   const res = await apiFetch('/api/dashboard');
-  if (!res.ok) return;
+  if (!res.ok) {
+    showLoader(false);
+    return;
+  }
   const d = res.data;
 
   document.getElementById('kpi-hoy').textContent = d.hoy;
@@ -255,6 +261,7 @@ async function cargarDashboard() {
   // Últimos mantenimientos
   const histRes = await apiFetch('/api/historial?');
   if (histRes.ok) renderUltimosMantenimientos(histRes.data.slice(0, 8));
+  showLoader(false);
 }
 
 function renderBarChart(containerId, items) {
@@ -846,10 +853,12 @@ function abrirModal(id) { document.getElementById(id).classList.add('open'); }
 function cerrarModal(id) { document.getElementById(id).classList.remove('open'); }
 
 function showLoader(show) {
-  const overlay = document.getElementById('loaderOverlay');
   const topInd = document.getElementById('topLoadingIndicator');
-  if (overlay) overlay.classList.toggle('show', show);
   if (topInd) topInd.style.display = show ? 'flex' : 'none';
+  
+  // Por ahora ocultamos el overlay gigante para seguir el nuevo diseño
+  const overlay = document.getElementById('loaderOverlay');
+  if (overlay) overlay.classList.remove('show');
 }
 
 function formatFechaHora(str) {
