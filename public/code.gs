@@ -169,7 +169,15 @@ function getSheet(name) {
 function getRowsToObjects(sheet) {
   if (!sheet || sheet.getLastRow() < 2) return [];
   const data = sheet.getDataRange().getDisplayValues();
-  const headers = data[0].map(h => h.trim().toLowerCase());
+  return dataToObjects(data);
+}
+
+/**
+ * Convierte un array 2D (de getValues()) en objetos usando la primera fila como headers.
+ */
+function dataToObjects(data) {
+  if (!data || data.length < 1) return [];
+  const headers = data[0].map(h => String(h).trim().toLowerCase());
   const rows = [];
   for (let i = 1; i < data.length; i++) {
     let obj = { _rowIndex: i + 1 };
@@ -179,6 +187,22 @@ function getRowsToObjects(sheet) {
     rows.push(obj);
   }
   return rows;
+}
+
+/**
+ * Lee SOLO un rango específico del final de la hoja para mayor velocidad.
+ */
+function getRecentRows(sheet, count) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
+  
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const numRowsToRead = Math.min(count, lastRow - 1);
+  const startRow = lastRow - numRowsToRead + 1;
+  const data = sheet.getRange(startRow, 1, numRowsToRead, sheet.getLastColumn()).getValues();
+  
+  // Re-empaquetamos con los headers para que dataToObjects funcione
+  return dataToObjects([headers, ...data]);
 }
 
 // ── Salas ────────────────────────────────────────────────────────────────────
@@ -371,9 +395,12 @@ function guardarIncidencia(data) {
 }
 
 function getHistorial() {
-  const rows = getRowsToObjects(getSheet('Registros'));
+  const sheet = getSheet('Registros');
+  // Leemos SOLO los últimos 150 registros para máxima velocidad
+  const rows = getRecentRows(sheet, 150);
+  
   const data = rows.map(r => ({
-    id:            r.id,
+    id:            String(r.id),
     maquina:       r.activo_nombre || r.activo_id,
     sala:          r.sala_nombre,
     operario:      r.operario_nombre,
