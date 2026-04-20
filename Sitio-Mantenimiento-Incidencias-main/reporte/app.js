@@ -3,9 +3,8 @@
    Adaptado para usar la API local del servidor Node.js
    ═══════════════════════════════════════════════════════════ */
 
-// ─── API LOCAL (servidor Node.js) ───────────────────────────────────────────
-// Detectar automáticamente la URL base del servidor
-const API_BASE = window.location.origin;
+// ─── API GOOGLE APPS SCRIPT ──────────────────────────────────────────────────
+const API = 'https://script.google.com/macros/s/AKfycbwW2_UWpOS45F-3BbyVbUvtxIJ3b_OP_Pnl_cSgSwO-BXz9nSzqoTb8oxnh185za0M/exec';
 // ─────────────────────────────────────────────────────────────────────────────
 
 /* ── DOM refs ───────────────────────────────────────────── */
@@ -105,14 +104,20 @@ async function loadMachines(preselect = null) {
 
   let machines = [];
 
+  let machines = [];
+
   try {
-    // Carga desde la API local del servidor Node.js
-    const res  = await fetch(`${API_BASE}/api/maquinas/lista`, { cache: 'no-store' });
+    // Carga consolidada desde Google Apps Script
+    // Usamos 'getMaquinas' directamente para mayor velocidad en esta vista
+    const fetchUrl = API + (API.includes('?') ? '&' : '?') + 'action=getMaquinas';
+    const res = await fetch(fetchUrl, { method: 'POST', body: JSON.stringify({ action: 'getMaquinas' }) });
     const json = await res.json();
-    if (json.status === 'ok' && json.machines.length) {
-      machines = json.machines;
+    if (json.ok && json.data) {
+      machines = json.data;
     }
-  } catch (_) { /* servidor no disponible */ }
+  } catch (err) {
+    console.error('Error cargando máquinas:', err);
+  }
 
   if (!machines.length) {
     machineSelect.innerHTML = '<option value="">No hay impresoras — contacta al administrador</option>';
@@ -432,10 +437,21 @@ async function submitToServer() {
   successOverlay.classList.remove('hidden');
 
   try {
-    const res = await fetch(`${API_BASE}/api/incidencias`, {
+    const fetchUrl = API + (API.includes('?') ? '&' : '?') + 'action=enviarIncidencia';
+    const res = await fetch(fetchUrl, {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(payload),
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body:    JSON.stringify({
+        action: 'enviarIncidencia',
+        payload: {
+          maquina_id: state.assetId,
+          maquina_nombre: state.assetId, // En esta vista el ID suele ser el nombre visible
+          tipo: state.type,
+          notas: state.notes,
+          timestamp: state.timestamp
+          // Nota: Si añadimos fotos, GAS requiere transformarlas a blobs o enviarlas como base64
+        }
+      }),
     });
     const json = await res.json();
 

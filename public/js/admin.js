@@ -5,6 +5,7 @@ let datosSalas = [];
 let datosMaquinas = [];
 let datosOperarios = [];
 let datosUsuarios = [];
+let datosHistorial = []; // Reutilizar datos ya cargados
 let isCargando = false;
 
 let rolActual = 'admin';
@@ -79,6 +80,7 @@ async function cargarDatosBase() {
     datosMaquinas = d.maquinas || [];
     datosOperarios = d.operarios || [];
     datosUsuarios = d.usuarios || [];
+    datosHistorial = d.historial || [];
     
     // Poblar dashboard con los datos ya recibidos
     actualizarVistaDashboard(d.dashboard, d.historial);
@@ -539,14 +541,18 @@ async function cargarHistorial() {
   const desde = document.getElementById('filtroDesde').value;
   const hasta = document.getElementById('filtroHasta').value;
 
-  if (sala) params.set('sala_id', sala);
-  if (maquina) params.set('maquina_id', maquina);
-  if (operario) params.set('operario_id', operario);
-  if (desde) params.set('desde', desde);
-  if (hasta) params.set('hasta', hasta);
-
   const tbody = document.getElementById('tablaHistorial');
   const empty = document.getElementById('historialEmpty');
+  
+  // OPTIMIZACIÓN: Si NO hay filtros, usamos los datos que ya tenemos cargados
+  const hasFilters = sala || maquina || operario || desde || hasta;
+  
+  if (!hasFilters && datosHistorial.length > 0) {
+    console.log('Mostrando historial desde memoria local (Instántaneo)');
+    renderizarContenidoHistorial(datosHistorial, tbody, empty);
+    return;
+  }
+
   if (tbody) tbody.innerHTML = skeletonTabla(8);
   if (empty) empty.style.display = 'none';
 
@@ -554,15 +560,19 @@ async function cargarHistorial() {
 
   if (!res.ok || !res.data.length) {
     tbody.innerHTML = '';
-    empty.style.display = 'block';
+    if (empty) empty.style.display = 'block';
     return;
   }
-  empty.style.display = 'none';
+  
+  renderizarContenidoHistorial(res.data, tbody, empty);
+}
 
-  tbody.innerHTML = res.data.map(r => `
+function renderizarContenidoHistorial(data, tbody, empty) {
+  if (empty) empty.style.display = 'none';
+  tbody.innerHTML = data.map(r => `
     <tr>
       <td data-label="#" class="text-muted">#${r.id}</td>
-      <td data-label="Máquina"><span class="fw-600">${r.maquina}</span><br><span class="text-muted" style="font-size:11px">${r.tipo_maquina}</span></td>
+      <td data-label="Máquina"><span class="fw-600">${r.maquina}</span><br><span class="text-muted" style="font-size:11px">${r.tipo_maquina || ''}</span></td>
       <td data-label="Sala">${r.sala}</td>
       <td data-label="Operario">${r.operario}</td>
       <td data-label="Inicio" style="font-size:12px">${formatFechaHora(r.iniciado_en)}</td>
