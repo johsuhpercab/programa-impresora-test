@@ -1,6 +1,6 @@
 {
-  "name": "MantApp · Mantenimiento Industrial",
-  "short_name": "MantApp",
+  "name": "Sistema de Gestión · Mantenimiento Industrial",
+  "short_name": "Gestión",
   "description": "Registra incidencias y mantenimientos con foto.",
   "start_url": "/",
   "display": "standalone",

@@ -1,5 +1,5 @@
 /**
- * MantApp — Google Apps Script Backend
+ * Sistema de Gestión — Google Apps Script Backend
  * Deploy as Web App → Execute as: Me → Who has access: Anyone
  *
  * Self-initializing: all sheets and default data are created automatically
@@ -92,7 +92,7 @@ function doGet(e) {
     if (action === 'getHistorial')   return getHistorial();
     if (action === 'getMaquinaById') return getMaquinaById(e.parameter.id);
 
-    return json({ status: 'ok', message: 'MantApp API activo y configurado.' });
+    return json({ status: 'ok', message: 'API del Sistema de Gestión activo y configurado.' });
   } catch (err) {
     return json({ status: 'error', error: err.message });
   }

@@ -53,10 +53,8 @@ function cambiarRolSimulado(nuevoRol) {
 
 
 // ── Inicialización ────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', async () => {
   try {
     isCargando = true;
-    showLoader(true);
     // Show initial skeletons
     const grid = document.getElementById('gridMaquinas');
     if (grid) grid.innerHTML = skeletonMaquinas();
@@ -73,7 +71,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   } catch (err) {
     console.error('Error durante la carga inicial:', err);
   } finally {
-    showLoader(false);
     isCargando = false;
     renderMaquinas(); 
   }
@@ -86,7 +83,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Auto-sincronización cada 2 minutos para mantener el panel "vivo"
     setInterval(() => {
-      console.log('Sincronización automática con MantApp Cloud...');
+      console.log('Sincronización automática con el Sistema de Gestión...');
       recargarTodo();
     }, 120000);
   } catch (err) {
@@ -236,12 +233,8 @@ function toggleSidebar() {
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 async function cargarDashboard() {
-  showLoader(true);
   const res = await apiFetch('/api/dashboard');
-  if (!res.ok) {
-    showLoader(false);
-    return;
-  }
+  if (!res.ok) return;
   const d = res.data;
 
   document.getElementById('kpi-hoy').textContent = d.hoy;
@@ -261,7 +254,6 @@ async function cargarDashboard() {
   // Últimos mantenimientos
   const histRes = await apiFetch('/api/historial?');
   if (histRes.ok) renderUltimosMantenimientos(histRes.data.slice(0, 8));
-  showLoader(false);
 }
 
 function renderBarChart(containerId, items) {
@@ -429,9 +421,7 @@ async function guardarMaquina() {
     estado: document.getElementById('editEstado').value,
   };
   if (!datos.nombre) return;
-  showLoader(true);
   const res = await apiFetch(`/api/maquina/${id}`, { method: 'PUT', body: datos });
-  showLoader(false);
   if (res.ok) {
     cerrarModal('modalMaquina');
     await cargarDatosBase();
@@ -463,12 +453,10 @@ async function crearMaquina() {
     return;
   }
 
-  showLoader(true);
   const res = await apiFetch('/api/maquinas', { 
     method: 'POST', 
     body: { nombre, sala_id, tipo, frecuencia_dias, modelo } 
   });
-  showLoader(false);
 
   if (res.ok) {
     cerrarModal('modalNuevaMaquina');
@@ -481,9 +469,7 @@ async function crearMaquina() {
 
 async function eliminarMaquina(id) {
   if (!confirm('¿Estás seguro de que deseas eliminar esta máquina por completo? Se borrarán también sus registros de mantenimiento.')) return;
-  showLoader(true);
   const res = await apiFetch(`/api/maquina/${id}`, { method: 'DELETE' });
-  showLoader(false);
   if (res.ok) {
     await cargarDatosBase();
     renderMaquinas();
@@ -693,9 +679,7 @@ async function crearOperario() {
     return;
   }
 
-  showLoader(true);
   const res = await apiFetch('/api/operarios', { method: 'POST', body: { nombre, pin } });
-  showLoader(false);
 
   if (res.ok) {
     cerrarModal('modalOperario');
@@ -765,9 +749,7 @@ async function crearUsuario() {
     return;
   }
 
-  showLoader(true);
   const res = await apiFetch('/api/usuarios', { method: 'POST', body: { nombre, email, rol } });
-  showLoader(false);
 
   if (res.ok) {
     cerrarModal('modalUsuario');
@@ -780,9 +762,7 @@ async function crearUsuario() {
 
 async function eliminarUsuarioAdmin(id) {
   if (!confirm('¿Desactivar este usuario?')) return;
-  showLoader(true);
   const res = await apiFetch(`/api/usuario/${id}`, { method: 'DELETE' });
-  showLoader(false);
   if (res.ok) {
     await cargarDatosBase();
     renderUsuarios();
@@ -853,12 +833,7 @@ function abrirModal(id) { document.getElementById(id).classList.add('open'); }
 function cerrarModal(id) { document.getElementById(id).classList.remove('open'); }
 
 function showLoader(show) {
-  const topInd = document.getElementById('topLoadingIndicator');
-  if (topInd) topInd.style.display = show ? 'flex' : 'none';
-  
-  // Por ahora ocultamos el overlay gigante para seguir el nuevo diseño
-  const overlay = document.getElementById('loaderOverlay');
-  if (overlay) overlay.classList.remove('show');
+  // Deshabilitado por petición del usuario
 }
 
 function formatFechaHora(str) {
@@ -886,10 +861,8 @@ async function recargarTodo() {
   const grid = document.getElementById('gridMaquinas');
   if (grid) grid.innerHTML = skeletonMaquinas();
   
-  showLoader(true);
   await cargarDatosBase();
   await cargarDashboard();
-  showLoader(false);
   isCargando = false;
   renderActualSection();
 }

@@ -1,11 +1,11 @@
 /* ═══════════════════════════════════════════════════════════
-   MantApp — Service Worker (Cache-first for shell assets)
+   Sistema de Gestión — Service Worker (Cache-first for shell assets)
    ═══════════════════════════════════════════════════════════ */
 
 // Skip ALL caching on localhost so dev changes are instant
 const IS_LOCAL = self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1';
 
-const CACHE_NAME = 'mantapp-v5';
+const CACHE_NAME = 'gestion-v1';
 const SHELL = [
   '/',
   '/index.html',
