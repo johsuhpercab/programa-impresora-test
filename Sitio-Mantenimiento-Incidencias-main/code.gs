@@ -194,7 +194,7 @@ function handleMaquinas(data) {
 
   if (data.method === 'PUT') {
     const rows = getRowsToObjects(sheet);
-    const m    = rows.find(x => x.id === data.id);
+    const m    = rows.find(x => x.id == data.id);
     if (m) {
       sheet.getRange(m._rowIndex, 2, 1, 6).setValues([[
         data.payload.sala_id       || m.sala_id,

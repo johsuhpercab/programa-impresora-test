@@ -5,6 +5,7 @@ let datosSalas = [];
 let datosMaquinas = [];
 let datosOperarios = [];
 let datosUsuarios = [];
+let isCargando = false;
 
 let rolActual = 'admin';
 
@@ -53,13 +54,22 @@ function cambiarRolSimulado(nuevoRol) {
 
 // ── Inicialización ────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
+  isCargando = true;
   // Show skeletons before data loads
   const grid = document.getElementById('gridMaquinas');
   if (grid) grid.innerHTML = skeletonMaquinas();
   const tbody = document.getElementById('dashboardUltimos');
   if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted)"><span class="spinner" style="display:inline-block;margin-right:8px"></span>Conectando con Google Sheets...</td></tr>';
+  
+  const maqBadge = document.getElementById('badge-maquinas');
+  if (maqBadge) {
+    maqBadge.textContent = '...';
+    maqBadge.style.display = 'inline';
+  }
 
   await cargarDatosBase();
+  isCargando = false;
+  
   await cargarDashboard();
   cargarInfoServidor();
   const selectRol = document.getElementById('simuladorRol');
@@ -88,6 +98,11 @@ async function cargarDatosBase() {
   datosMaquinas = maquinas.data || [];
   datosOperarios = operarios.data || [];
   datosUsuarios = usuarios.data || [];
+
+  // Update UI now that data is ready
+  if (document.getElementById('section-maquinas').classList.contains('active')) {
+    renderMaquinas();
+  }
 
   // Poblar selects de salas
   ['filtroSalaMaquinas', 'filtroSala', 'filtroSalaQR', 'nuevoMaquinaSala'].forEach(id => {
@@ -123,6 +138,13 @@ async function cargarDatosBase() {
   const badge = document.getElementById('badge-alertas');
   if (alertas > 0) { badge.textContent = alertas; badge.style.display = 'inline'; }
   else badge.style.display = 'none';
+
+  // Badge máquinas total
+  const maqBadge = document.getElementById('badge-maquinas');
+  if (maqBadge) {
+    maqBadge.textContent = datosMaquinas.length;
+    maqBadge.style.display = datosMaquinas.length > 0 ? 'inline' : 'none';
+  }
 }
 
 async function cargarInfoServidor() {
@@ -245,14 +267,23 @@ function renderUltimosMantenimientos(registros) {
 
 // ── Máquinas ──────────────────────────────────────────────────────────────────
 function renderMaquinas() {
-  const salaFiltro = document.getElementById('filtroSalaMaquinas').value;
+  const grid = document.getElementById('gridMaquinas');
+  
+  if (isCargando && !datosMaquinas.length) {
+    grid.innerHTML = skeletonMaquinas();
+    return;
+  }
+
   const lista = salaFiltro
     ? datosMaquinas.filter(m => String(m.sala_id) === String(salaFiltro))
     : datosMaquinas;
 
-  const grid = document.getElementById('gridMaquinas');
   if (!lista.length) {
-    grid.innerHTML = '<div class="empty-state"><div class="icon">🖨️</div><p>No hay máquinas en esta sala</p></div>';
+    if (isCargando) {
+       grid.innerHTML = skeletonMaquinas();
+    } else {
+       grid.innerHTML = '<div class="empty-state"><div class="icon">🖨️</div><p>No hay máquinas en esta sala</p></div>';
+    }
     return;
   }
 
@@ -286,11 +317,11 @@ function renderMaquinas() {
         </div>
         <div class="maquina-actions">
           ${rolActual === 'admin' ? `
-            <button class="btn btn-primary btn-sm" onclick="verQR(${m.id}, '${escapar(m.nombre)}', '${escapar(m.sala_nombre)}')">📱 QR</button>
-            <button class="btn btn-outline btn-sm" onclick="editarMaquina(${m.id})">✏️ Editar</button>
-            <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger);padding:4px 8px" onclick="eliminarMaquina(${m.id})" title="Eliminar máquina">🗑️</button>
+            <button class="btn btn-primary btn-sm" onclick="verQR('${m.id}', '${escapar(m.nombre)}', '${escapar(m.sala_nombre)}')">📱 QR</button>
+            <button class="btn btn-outline btn-sm" onclick="editarMaquina('${m.id}')">✏️ Editar</button>
+            <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger);padding:4px 8px" onclick="eliminarMaquina('${m.id}')" title="Eliminar máquina">🗑️</button>
           ` : `
-            <button class="btn btn-primary btn-sm" onclick="verQR(${m.id}, '${escapar(m.nombre)}', '${escapar(m.sala_nombre)}')">📱 QR</button>
+            <button class="btn btn-primary btn-sm" onclick="verQR('${m.id}', '${escapar(m.nombre)}', '${escapar(m.sala_nombre)}')">📱 QR</button>
           `}
         </div>
       </div>
@@ -370,6 +401,8 @@ async function guardarMaquina() {
     cerrarModal('modalMaquina');
     await cargarDatosBase();
     renderMaquinas();
+  } else {
+    alert('Error al guardar: ' + (res.error || 'Error desconocido'));
   }
 }
 
@@ -432,8 +465,13 @@ function renderQRs() {
     : datosMaquinas;
 
   const grid = document.getElementById('gridQRs');
+  if (isCargando && !datosMaquinas.length) {
+     grid.innerHTML = skeletonMaquinas();
+     return;
+  }
+  
   grid.innerHTML = lista.map(m => `
-    <div class="maquina-card fade-in" style="cursor:pointer" onclick="verQR(${m.id}, '${escapar(m.nombre)}', '${escapar(m.sala_nombre)}')">
+    <div class="maquina-card fade-in" style="cursor:pointer" onclick="verQR('${m.id}', '${escapar(m.nombre)}', '${escapar(m.sala_nombre)}')">
       <div class="maquina-header">
         <div>
           <div class="maquina-nombre">${m.nombre}</div>
@@ -787,10 +825,16 @@ function escapar(str) {
 }
 
 async function recargarTodo() {
+  isCargando = true;
+  const grid = document.getElementById('gridMaquinas');
+  if (grid) grid.innerHTML = skeletonMaquinas();
+  
   showLoader(true);
   await cargarDatosBase();
   await cargarDashboard();
   showLoader(false);
+  isCargando = false;
+  renderMaquinas();
 }
 
 // Cerrar modal al hacer clic fuera
