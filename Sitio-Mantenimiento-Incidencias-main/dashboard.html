@@ -92,7 +92,7 @@
               <option value="usuario">Usuario (Lectura)</option>
             </select>
           </div>
-          <div style="font-size:12px;color:var(--text-muted)" id="serverInfo" class="server-info-hw">Cargando...</div>
+          <div style="font-size:12px;color:var(--text-muted)" id="serverInfo" class="server-info-hw">Conectado a MantApp Cloud</div>
           <button class="btn btn-primary btn-sm" onclick="recargarTodo()">↺ Actualizar</button>
         </div>
       </header>
@@ -355,7 +355,7 @@
         <div class="qr-maquina-nombre" id="qrNombre"></div>
         <div class="qr-maquina-sala" id="qrSala"></div>
         <img id="qrImg" src="" alt="QR Code">
-        <div class="qr-url" id="qrUrl"></div>
+        <a class="qr-url" id="qrUrl" target="_blank" style="color:var(--accent);text-decoration:underline;word-break:break-all;display:block;margin-top:10px"></a>
       </div>
       <div class="modal-footer" style="justify-content:center">
         <button class="btn btn-primary" onclick="imprimirQR()">🖨️ Imprimir QR</button>

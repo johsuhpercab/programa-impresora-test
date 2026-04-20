@@ -510,7 +510,9 @@ async function verQR(id, nombre, sala) {
   const res = await apiFetch(`/api/maquina/${id}/qr`);
   if (res.ok) {
     document.getElementById('qrImg').src = res.data.qr;
-    document.getElementById('qrUrl').textContent = res.data.url;
+    const link = document.getElementById('qrUrl');
+    link.textContent = res.data.url;
+    link.href = res.data.url;
   }
 }
 
@@ -751,7 +753,7 @@ async function eliminarUsuarioAdmin(id) {
 async function apiFetch(url, options = {}) {
   try {
     const isLocalInfo = url.includes('/api/info');
-    if (isLocalInfo) return { ok: true, data: { ip: "127.0.0.1", puerto: 80 } };
+    if (isLocalInfo) return { ok: true, data: { status: "Cloud", info: "Google Sheets" } };
 
     let action = '';
     let payload = options.body;
