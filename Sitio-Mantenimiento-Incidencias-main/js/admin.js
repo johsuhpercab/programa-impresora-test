@@ -53,12 +53,29 @@ function cambiarRolSimulado(nuevoRol) {
 
 // ── Inicialización ────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
+  // Show skeletons before data loads
+  const grid = document.getElementById('gridMaquinas');
+  if (grid) grid.innerHTML = skeletonMaquinas();
+  const tbody = document.getElementById('dashboardUltimos');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted)"><span class="spinner" style="display:inline-block;margin-right:8px"></span>Conectando con Google Sheets...</td></tr>';
+
   await cargarDatosBase();
   await cargarDashboard();
   cargarInfoServidor();
   const selectRol = document.getElementById('simuladorRol');
   if (selectRol) cambiarRolSimulado(selectRol.value);
 });
+
+function skeletonMaquinas() {
+  const card = `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;animation:pulse 1.5s ease-in-out infinite">
+    <div style="height:14px;background:var(--border);border-radius:6px;width:60%;margin-bottom:12px"></div>
+    <div style="height:10px;background:var(--border);border-radius:6px;width:40%;margin-bottom:20px"></div>
+    <div style="height:10px;background:var(--border);border-radius:6px;width:80%;margin-bottom:8px"></div>
+    <div style="height:10px;background:var(--border);border-radius:6px;width:70%"></div>
+  </div>`;
+  const inner = Array(6).fill(card).join('');
+  return `<div class="grid-maquinas-inner" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;display:grid">${inner}</div>`;
+}
 
 async function cargarDatosBase() {
   const [salas, maquinas, operarios, usuarios] = await Promise.all([

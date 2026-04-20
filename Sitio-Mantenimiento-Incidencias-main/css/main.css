@@ -328,6 +328,7 @@ tr:hover td { background: var(--bg-card-hover); }
 /* ── Animaciones ─────────────────────────────────────────────────────────── */
 @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 .fade-in { animation: fadeIn 0.3s ease; }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
 
 /* ── Empty state ─────────────────────────────────────────────────────────── */
 .empty-state { text-align: center; padding: 48px 24px; color: var(--text-muted); }

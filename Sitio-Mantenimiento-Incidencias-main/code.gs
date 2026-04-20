@@ -10,7 +10,9 @@ const SHEET_ID = '1msNplZKo4KbDlKbUwWYoisxqOftZ1xbXX2rs6KdeqT8';
 
 // ── Auto-init ────────────────────────────────────────────────────────────────
 function setupIfNeeded() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const props = PropertiesService.getScriptProperties();
+  if (props.getProperty('initialized') === 'true') return; // Fast exit after first run
+  const ss = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openById(SHEET_ID);
 
   // Salas
   let salas = ss.getSheetByName('Salas');
@@ -54,6 +56,8 @@ function setupIfNeeded() {
     registros.appendRow(['id', 'timestamp', 'activo_id', 'activo_nombre', 'sala_nombre', 'operario_nombre', 'tipo', 'notas']);
     registros.setFrozenRows(1);
   }
+
+  props.setProperty('initialized', 'true');
 }
 
 // ── Entry points ─────────────────────────────────────────────────────────────
