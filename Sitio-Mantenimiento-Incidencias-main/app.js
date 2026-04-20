@@ -5,7 +5,7 @@
 
 // ─── API LOCAL (servidor Node.js) ───────────────────────────────────────────
 // Detectar URL o inyectarla
-const API_URL = 'https://script.google.com/macros/s/AKfycbz6SNsno-ur_wDMDOHKHWJ7a_YFFFWVT2iGMq-gvVr01iZPsqC4yNMi3BogfRUJ19df/exec'; 
+const API_URL = 'https://script.google.com/macros/s/AKfycbxxBOLs9FnxptnP-pGtBPoiMZzC-JURvzocCrefWKZOlz8vZECunG8froIy_QzLjto-/exec'; 
 
 async function apiFetch(url, options = {}) {
   let action = '';
