@@ -122,10 +122,8 @@ async function cargarDatosBase() {
   datosOperarios = operarios.data || [];
   datosUsuarios = usuarios.data || [];
 
-  // Update UI now that data is ready
-  if (document.getElementById('section-maquinas').classList.contains('active')) {
-    renderMaquinas();
-  }
+  // Actualizar la vista actual ahora que los datos están listos
+  renderActualSection();
 
   // Poblar selects de salas
   ['filtroSalaMaquinas', 'filtroSala', 'filtroSalaQR', 'nuevoMaquinaSala'].forEach(id => {
@@ -214,6 +212,17 @@ function navigateTo(section) {
   if (section === 'operarios') renderOperarios();
   if (section === 'usuarios') renderUsuarios();
   if (section === 'qrcodes') renderQRs();
+}
+
+function renderActualSection() {
+  const activeSection = document.querySelector('.section.active');
+  if (!activeSection) return;
+  const id = activeSection.id.replace('section-', '');
+  if (id === 'maquinas') renderMaquinas();
+  if (id === 'historial') cargarHistorial();
+  if (id === 'operarios') renderOperarios();
+  if (id === 'usuarios') renderUsuarios();
+  if (id === 'qrcodes') renderQRs();
 }
 
 function toggleSidebar() {
@@ -870,7 +879,7 @@ async function recargarTodo() {
   await cargarDashboard();
   showLoader(false);
   isCargando = false;
-  renderMaquinas();
+  renderActualSection();
 }
 
 // Cerrar modal al hacer clic fuera
